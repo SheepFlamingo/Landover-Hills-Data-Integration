@@ -1,108 +1,91 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from "react-router-dom";
+import MetadataDetails from "./MetadataDetails";
 
-const API = "http://127.0.0.1:8000"; // your FastAPI backend
+const API = "http://localhost:8000";
 
 interface Dataset {
   file_name: string;
-  dataset_name?: string;
+  dataset_title?: string;
   description?: string;
-  department?: string;
-  format?: string;
+  category?: string;
+  tags?: string;
+  row_labels?: string;
   update_frequency?: string;
-  public?: string;
-  metadata_status?: string;
-  notes?: string;
+  data_provided_by?: string;
+  contact_email?: string;
+  licensing?: string;
+  data_dictionary?: string;
+  resource_name?: string;
+  last_updated_date?: string;
+  editing?: boolean; // local-only flag for UI state
 }
 
-function App() {
-  const [file, setFile] = useState<File | null>(null);
+function Overview() {
   const [inventory, setInventory] = useState<Dataset[]>([]);
+  const navigate = useNavigate();
 
-  // Load inventory from backend
+  // Load data
   const refreshInventory = async () => {
     const res = await axios.get(`${API}/inventory`);
     setInventory(res.data);
   };
 
-  // Handle file upload
-  const handleUpload = async () => {
-    if (!file) return alert("Please select a file first.");
-    const form = new FormData();
-    form.append("file", file);
-    await axios.post(`${API}/upload`, form);
-    await refreshInventory();
-    setFile(null);
-  };
-
-  // Handle metadata save
-  const handleMetadataSubmit = async (item: Dataset) => {
-    const form = new FormData();
-    Object.entries(item).forEach(([k, v]) => form.append(k, v as string));
-    await axios.post(`${API}/metadata`, form);
-    await refreshInventory();
-  };
-
-  // Handle export to Excel
-  const handleExport = async () => {
-    window.open(`${API}/export`);
-  };
-
-  // Refresh inventory on load
   useEffect(() => {
     refreshInventory();
   }, []);
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif", backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
-      <h1 style={{ marginBottom: "1rem" }}>📂 Landover Hills Data Inventory System</h1>
+    <div className="min-h-screen bg-gray-50 p-8 font-sans">
+      <h1 className="text-2xl font-bold mb-6">📘 Landover Hills Data Inventory System</h1>
 
-      <div style={{ marginBottom: "1.5rem", background: "#fff", padding: "1rem", borderRadius: "8px" }}>
-        <input
-          type="file"
-          accept="*/*"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-          style={{ marginRight: "1rem" }}
-        />
-        <button onClick={handleUpload}>Upload File</button>
-        <button onClick={handleExport} style={{ marginLeft: "1rem" }}>Export to Excel</button>
-      </div>
-
-      <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#fff" }}>
-        <thead>
-          <tr style={{ backgroundColor: "#222", color: "white" }}>
-            <th style={{ padding: "8px" }}>File Name</th>
-            <th>Dataset Name</th>
-            <th>Description</th>
-            <th>Department</th>
-            <th>Format</th>
-            <th>Update Frequency</th>
-            <th>Public</th>
-            <th>Metadata Status</th>
-            <th>Notes</th>
-            <th>Save</th>
-          </tr>
-        </thead>
-        <tbody>
-          {inventory.map((item, i) => (
-            <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
-              <td style={{ padding: "8px" }}>{item.file_name}</td>
-              <td><input onChange={(e) => item.dataset_name = e.target.value} defaultValue={item.dataset_name || ""} /></td>
-              <td><input onChange={(e) => item.description = e.target.value} defaultValue={item.description || ""} /></td>
-              <td><input onChange={(e) => item.department = e.target.value} defaultValue={item.department || ""} /></td>
-              <td><input onChange={(e) => item.format = e.target.value} defaultValue={item.format || ""} /></td>
-              <td><input onChange={(e) => item.update_frequency = e.target.value} defaultValue={item.update_frequency || ""} /></td>
-              <td><input onChange={(e) => item.public = e.target.value} defaultValue={item.public || ""} /></td>
-              <td><input onChange={(e) => item.metadata_status = e.target.value} defaultValue={item.metadata_status || ""} /></td>
-              <td><input onChange={(e) => item.notes = e.target.value} defaultValue={item.notes || ""} /></td>
-              <td>
-                <button onClick={() => handleMetadataSubmit(item)}>💾</button>
-              </td>
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full border border-gray-200 text-sm">
+          <thead className="bg-gray-200 text-gray-800">
+            <tr>
+              <th className="p-2">File</th>
+              <th className="p-2">Dataset Title</th>
+              <th className="p-2">Update Frequency</th>
+              <th className="p-2">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {inventory.map((item, i) => (
+              <tr key={i} className="border-t">
+                <td className="p-2">{item.file_name}</td>
+                <td className="p-2">{item.dataset_title || "—"}</td>
+                <td className="p-2">{item.update_frequency || "—"}</td>
+                <td className="p-2">
+                  <button
+                    onClick={() => navigate(`/details/${encodeURIComponent(item.file_name)}`)}
+                    className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                  >
+                    🔍 View Details
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Overview />} />
+        <Route path="/details/:file_name" element={<MetadataDetails />} />
+      </Routes>
+    </Router>
   );
 }
 
