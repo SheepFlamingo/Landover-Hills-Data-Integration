@@ -29,12 +29,22 @@ interface Dataset {
 
 function Overview() {
   const [inventory, setInventory] = useState<Dataset[]>([]);
+  const [file, setFile] = useState<File | null>(null);
   const navigate = useNavigate();
 
   // Load data
   const refreshInventory = async () => {
     const res = await axios.get(`${API}/inventory`);
     setInventory(res.data);
+  };
+
+  const handleUpload = async () => {
+    if (!file) return alert("Please select a file to upload.");
+    const form = new FormData();
+    form.append("file", file);
+    await axios.post(`${API}/upload`, form);
+    await refreshInventory();
+    setFile(null);
   };
 
   useEffect(() => {
@@ -44,6 +54,27 @@ function Overview() {
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans">
       <h1 className="text-2xl font-bold mb-6">📘 Landover Hills Data Inventory System</h1>
+
+      <div className="mb-6 bg-white p-4 rounded-lg shadow flex items-center">
+        <input
+          type="file"
+          accept="*/*"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          className="mr-3 border border-gray-300 rounded px-3 py-2"
+        />
+        <button
+          onClick={handleUpload}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Upload File
+        </button>
+        <button
+          onClick={() => window.open(`${API}/export`)}
+          className="ml-3 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          Export to Excel
+        </button>
+      </div>
 
       <div className="overflow-x-auto bg-white rounded-lg shadow">
         <table className="min-w-full border border-gray-200 text-sm">
