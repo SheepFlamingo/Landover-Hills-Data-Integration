@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import pandas as pd
 import os
+from datetime import datetime
 
 app = FastAPI(title="Landover Hills Data Inventory")
 
@@ -25,10 +26,14 @@ def load_existing_files():
         fpath = os.path.join(UPLOAD_DIR, fname)
         if os.path.isfile(fpath):
             size_kb = round(os.path.getsize(fpath) / 1024, 2)
+            # Get file modification time as upload date
+            mod_time = os.path.getmtime(fpath)
+            uploaded_date = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
             files.append({
                 "file_name": fname,
                 "file_type": fname.split(".")[-1],
-                "file_size_kb": size_kb
+                "file_size_kb": size_kb,
+                "uploaded": uploaded_date
             })
     return files
 
@@ -46,10 +51,12 @@ async def upload_file(file: UploadFile):
     with open(filepath, "wb") as f:
         f.write(await file.read())
 
+    uploaded_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     record = {
         "file_name": file.filename,
         "file_type": file.content_type or "unknown",
-        "file_size_kb": round(os.path.getsize(filepath) / 1024, 2)
+        "file_size_kb": round(os.path.getsize(filepath) / 1024, 2),
+        "uploaded": uploaded_date
     }
     inventory.append(record)
     return {"message": "File uploaded", "file_name": file.filename}
@@ -101,3 +108,10 @@ def export_inventory():
     filepath = "Municipal_Data_Inventory.xlsx"
     df.to_excel(filepath, index=False)
     return FileResponse(filepath, filename=filepath)
+
+@app.get("/files/{file_name}")
+def download_file(file_name: str):
+    filepath = os.path.join(UPLOAD_DIR, file_name)
+    if not os.path.exists(filepath):
+        return {"error": "File not found"}
+    return FileResponse(filepath, filename=file_name)
