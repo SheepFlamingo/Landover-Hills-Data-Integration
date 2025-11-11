@@ -23,9 +23,8 @@ interface Dataset {
 export default function MetadataDetails() {
   const { file_name } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = useState<Dataset | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<Dataset | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,125 +32,149 @@ export default function MetadataDetails() {
       const found = res.data.find(
         (d: Dataset) => d.file_name === decodeURIComponent(file_name || "")
       );
-      setData(found || null);
       setForm(found || null);
     };
     fetchData();
   }, [file_name]);
 
-  if (!data || !form) return <p className="p-8">Loading...</p>;
-
-  const metadataFields = [
-    {
-      name: "Dataset Title",
-      desc: "Concise, descriptive name of the dataset that reflects its contents. Avoid abbreviations.",
-      key: "dataset_title",
-    },
-    {
-      name: "Description",
-      desc: "Detailed summary explaining what the dataset contains, its purpose, and how it can be used. Mention data sources and update frequency.",
-      key: "description",
-    },
-    {
-      name: "Category",
-      desc: "Broad classification under which the dataset falls in the portal.",
-      key: "category",
-    },
-    {
-      name: "Tags / Keywords",
-      desc: "Comma-separated keywords to help users search and discover the dataset easily.",
-      key: "tags",
-    },
-    {
-      name: "Row Labels",
-      desc: "The key field that uniquely identifies each record or entry in the dataset.",
-      key: "row_labels",
-    },
-    {
-      name: "Update Frequency",
-      desc: "How often the dataset is refreshed or updated.",
-      key: "update_frequency",
-    },
-    {
-      name: "Data Provided By (Agency / Department)",
-      desc: "The official county department, office, or agency responsible for producing or maintaining the dataset.",
-      key: "data_provided_by",
-    },
-    {
-      name: "Contact Email",
-      desc: "Email address for questions or feedback about the dataset.",
-      key: "contact_email",
-    },
-    {
-      name: "Licensing & Attribution",
-      desc: "Specify data usage rights and attribution requirements.",
-      key: "licensing",
-    },
-    {
-      name: "Data Dictionary / Attachments",
-      desc: "Upload or link any supporting documentation explaining data fields, codes, or classifications.",
-      key: "data_dictionary",
-    },
-    {
-      name: "Resource Name",
-      desc: "Name of the source of the dataset.",
-      key: "resource_name",
-    },
-    {
-      name: "Last Updated Date",
-      desc: "The date when the dataset or metadata was last modified.",
-      key: "last_updated_date",
-    },
-  ];
+  if (!form) return <p className="p-8">Loading...</p>;
 
   const handleChange = (key: keyof Dataset, value: string) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
-  const handleToggleEdit = async () => {
-    if (isEditing && form) {
-      // Save changes
-      try {
-        await axios.post(`${API}/metadata`, form);
-        setData(form);
-      } catch (error) {
-        console.error("Failed to save metadata", error);
-        // Optionally handle error feedback here
-      }
+  const handleSave = async () => {
+    if (form) {
+      const formData = new FormData();
+      Object.entries(form).forEach(([k, v]) => formData.append(k, v as string));
+      await axios.post(`${API}/metadata`, formData);
+      setIsEditing(false);
     }
-    setIsEditing(!isEditing);
   };
+
+  const metadataFields = [
+    {
+      key: "dataset_title",
+      name: "Dataset Title",
+      description:
+        "Concise, descriptive name of the dataset that reflects its contents. Avoid abbreviations.",
+      example: "Town of XYZ",
+    },
+    {
+      key: "description",
+      name: "Description",
+      description:
+        "Detailed summary explaining what the dataset contains, its purpose, and how it can be used. Mention data sources and update frequency.",
+      example:
+        "This dataset contains information about the programs of Town XYZ.",
+    },
+    {
+      key: "category",
+      name: "Category",
+      description:
+        "Broad classification under which the dataset falls in the portal.",
+      example:
+        "Public Safety / Health / Transportation / Finance / Environment",
+    },
+    {
+      key: "tags",
+      name: "Tags / Keywords",
+      description:
+        "Comma-separated keywords to help users search and discover the dataset easily.",
+      example: "crime, police, incidents, safety, pgcounty, Town XYZ",
+    },
+    {
+      key: "row_labels",
+      name: "Row Labels",
+      description:
+        "The key field that uniquely identifies each record or entry in the dataset.",
+      example: "Incident ID / Permit Number / Case ID",
+    },
+    {
+      key: "update_frequency",
+      name: "Update Frequency",
+      description: "How often the dataset is refreshed or updated.",
+      example: "Monthly / Quarterly / Annually / As Needed",
+    },
+    {
+      key: "data_provided_by",
+      name: "Data Provided By (Agency / Department)",
+      description:
+        "The official county department, office, or agency responsible for producing or maintaining the dataset.",
+      example: "Town of XYZ",
+    },
+    {
+      key: "contact_email",
+      name: "Contact Email",
+      description:
+        "Email address for questions or feedback about the dataset.",
+      example: "dataservices@pgcmd.gov",
+    },
+    {
+      key: "licensing",
+      name: "Licensing & Attribution",
+      description:
+        "Specify data usage rights and attribution requirements.",
+      example: "Prince George’s County Government",
+    },
+    {
+      key: "data_dictionary",
+      name: "Data Dictionary / Attachments",
+      description:
+        "Upload or link any supporting documentation explaining data fields, codes, or classifications.",
+      example: "Dataset CSV File for Data Definitions",
+    },
+    {
+      key: "resource_name",
+      name: "Resource Name",
+      description: "Name of the source of the dataset.",
+      example: "TOWNXYZ.Budgets",
+    },
+    {
+      key: "last_updated_date",
+      name: "Last Updated Date",
+      description:
+        "The date when the dataset or metadata was last modified.",
+      example: "2025-09-29",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <h2 className="text-xl font-bold mb-6">📋 Metadata Details</h2>
+      <h2 className="text-xl font-bold mb-6">
+        📋 Metadata for: {form.file_name}
+      </h2>
 
       <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
         <table className="w-full border border-gray-300 text-sm">
           <thead className="bg-gray-200">
             <tr>
-              <th className="p-2 text-left">Field Name</th>
-              <th className="p-2 text-left">Definition / Description</th>
-              <th className="p-2 text-left">Value</th>
+              <th className="p-2 text-left w-1/5">Field Name</th>
+              <th className="p-2 text-left w-2/5">Definition / Description</th>
+              <th className="p-2 text-left w-1/5">Example / Guidance</th>
+              <th className="p-2 text-left w-1/5">
+                To be Filled by Reporting Agency / Team
+              </th>
             </tr>
           </thead>
           <tbody>
-            {metadataFields.map((f, idx) => (
-              <tr key={idx} className="border-t">
+            {metadataFields.map((f) => (
+              <tr key={f.key} className="border-t align-top">
                 <td className="font-semibold p-2">{f.name}</td>
-                <td className="p-2 text-gray-700">{f.desc}</td>
+                <td className="p-2 text-gray-700">{f.description}</td>
+                <td className="p-2 text-gray-500 italic">{f.example}</td>
                 <td className="p-2 bg-gray-50">
                   {isEditing ? (
                     <input
                       type="text"
-                      className="w-full border border-gray-300 rounded px-2 py-1"
                       value={form[f.key as keyof Dataset] || ""}
-                      onChange={(e) => handleChange(f.key as keyof Dataset, e.target.value)}
+                      onChange={(e) =>
+                        handleChange(f.key as keyof Dataset, e.target.value)
+                      }
+                      className="border border-gray-300 rounded px-2 py-1 w-full"
                     />
-                  ) : form[f.key as keyof Dataset] ? (
-                    <span>{form[f.key as keyof Dataset]}</span>
                   ) : (
-                    <span className="text-gray-400">—</span>
+                    <span>{form[f.key as keyof Dataset] || "—"}</span>
                   )}
                 </td>
               </tr>
@@ -160,21 +183,28 @@ export default function MetadataDetails() {
         </table>
       </div>
 
-      <button
-        onClick={handleToggleEdit}
-        className="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-      >
-        {isEditing ? "Save Changes" : "Edit Metadata"}
-      </button>
-
-      {!isEditing && (
+      {isEditing ? (
         <button
-          onClick={() => navigate("/")}
-          className="mt-6 ml-4 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+          onClick={handleSave}
+          className="mt-6 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
-          ⬅ Back to Overview
+          💾 Save Changes
+        </button>
+      ) : (
+        <button
+          onClick={() => setIsEditing(true)}
+          className="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          ✏️ Edit Metadata
         </button>
       )}
+
+      <button
+        onClick={() => navigate("/")}
+        className="mt-6 ml-3 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+      >
+        ⬅ Back to Overview
+      </button>
     </div>
   );
 }

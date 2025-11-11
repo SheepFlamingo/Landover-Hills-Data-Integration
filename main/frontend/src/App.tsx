@@ -1,30 +1,14 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  useNavigate,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import MetadataDetails from "./MetadataDetails";
 
-const API = "http://localhost:8000";
+const API = "http://127.0.0.1:8000";
 
 interface Dataset {
   file_name: string;
   dataset_title?: string;
-  description?: string;
-  category?: string;
-  tags?: string;
-  row_labels?: string;
   update_frequency?: string;
-  data_provided_by?: string;
-  contact_email?: string;
-  licensing?: string;
-  data_dictionary?: string;
-  resource_name?: string;
-  last_updated_date?: string;
-  editing?: boolean; // local-only flag for UI state
 }
 
 function Overview() {
@@ -32,7 +16,6 @@ function Overview() {
   const [file, setFile] = useState<File | null>(null);
   const navigate = useNavigate();
 
-  // Load data
   const refreshInventory = async () => {
     const res = await axios.get(`${API}/inventory`);
     setInventory(res.data);
@@ -109,7 +92,7 @@ function Overview() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <Router>
       <Routes>
@@ -119,5 +102,3 @@ function App() {
     </Router>
   );
 }
-
-export default App;

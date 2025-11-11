@@ -3,13 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import pandas as pd
 import os
-import io
+from datetime import datetime
 
 app = FastAPI(title="Landover Hills Data Inventory")
 
+# Allow the React app (localhost:3000) to call this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],      # you can restrict this later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -17,20 +18,45 @@ app.add_middleware(
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-inventory = []
+
+# --- Load existing files from uploads directory on startup ---
+def load_existing_files():
+    files = []
+    for fname in os.listdir(UPLOAD_DIR):
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        if os.path.isfile(fpath):
+            size_kb = round(os.path.getsize(fpath) / 1024, 2)
+            # Get file modification time as upload date
+            mod_time = os.path.getmtime(fpath)
+            uploaded_date = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
+            files.append({
+                "file_name": fname,
+                "file_type": fname.split(".")[-1],
+                "file_size_kb": size_kb,
+                "uploaded": uploaded_date
+            })
+    return files
+
+inventory = load_existing_files()
+print(f"✅ Loaded {len(inventory)} existing file(s) from uploads folder.")
 
 @app.post("/upload")
 async def upload_file(file: UploadFile):
-    # Save any file type
     filepath = os.path.join(UPLOAD_DIR, file.filename)
+
+    # Prevent duplicate records if a file with same name already exists
+    if any(i["file_name"] == file.filename for i in inventory):
+        return {"message": f"File '{file.filename}' already exists."}
+
     with open(filepath, "wb") as f:
         f.write(await file.read())
 
-    # Basic file info
+    uploaded_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     record = {
         "file_name": file.filename,
         "file_type": file.content_type or "unknown",
-        "file_size_kb": round(os.path.getsize(filepath) / 1024, 2)
+        "file_size_kb": round(os.path.getsize(filepath) / 1024, 2),
+        "uploaded": uploaded_date
     }
     inventory.append(record)
     return {"message": "File uploaded", "file_name": file.filename}
@@ -67,6 +93,7 @@ def add_metadata(
                 "resource_name": resource_name,
                 "last_updated_date": last_updated_date
             })
+            break
     return {"message": "Metadata saved"}
 
 @app.get("/inventory")
@@ -81,3 +108,10 @@ def export_inventory():
     filepath = "Municipal_Data_Inventory.xlsx"
     df.to_excel(filepath, index=False)
     return FileResponse(filepath, filename=filepath)
+
+@app.get("/files/{file_name}")
+def download_file(file_name: str):
+    filepath = os.path.join(UPLOAD_DIR, file_name)
+    if not os.path.exists(filepath):
+        return {"error": "File not found"}
+    return FileResponse(filepath, filename=file_name)
