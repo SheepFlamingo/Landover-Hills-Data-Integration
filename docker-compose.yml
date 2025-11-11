@@ -1,0 +1,23 @@
+services:
+  backend:
+    # The build context is now the correct path
+    build: ./main/backend
+    ports:
+      # Expose port 8000 on your Mac, mapping to port 8000 in the container
+      # This lets you test the backend directly at http://localhost:8000
+      - "8000:8000"
+    volumes:
+      # This links your local 'uploads' folder to the container's 'uploads' folder
+      # This is CRUCIAL for making sure your uploaded files are not lost
+      # (Assumes WORKDIR /app in your backend Dockerfile)
+      - ./main/backend/uploads:/app/uploads
+
+  frontend:
+    # The build context is now the correct path (frontend, not react)
+    build: ./main/frontend
+    ports:
+      # Expose port 8080 on your Mac, mapping to port 80 in the container
+      - "8080:80"
+    # This tells Docker to wait for the backend to start before starting the frontend
+    depends_on:
+      - backend
