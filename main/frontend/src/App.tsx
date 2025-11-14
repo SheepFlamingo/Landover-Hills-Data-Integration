@@ -54,6 +54,10 @@ function Overview() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [categorySearch, setCategorySearch] = useState<string>("");
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; fileName: string | null }>({
+    show: false,
+    fileName: null
+  });
   const navigate = useNavigate();
 
   const refreshInventory = async () => {
@@ -119,6 +123,27 @@ function Overview() {
     }
   };
 
+  const handleDeleteClick = (fileName: string) => {
+    setDeleteConfirm({ show: true, fileName });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.fileName) return;
+    
+    try {
+      await axios.delete(`${API}/files/${encodeURIComponent(deleteConfirm.fileName)}`);
+      await refreshInventory();
+      setDeleteConfirm({ show: false, fileName: null });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      alert("Failed to delete file. Please try again.");
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ show: false, fileName: null });
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -133,6 +158,32 @@ function Overview() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-sans">
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Delete File</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <span className="font-semibold text-gray-800">"{deleteConfirm.fileName}"</span>? This action cannot be undone.
+            </p>
+            <div className="flex space-x-4">
+              <button
+                onClick={handleDeleteCancel}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-xl transition-all duration-200 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Town Selection Modal */}
       {showTownModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -360,14 +411,22 @@ function Overview() {
                         )}
                       </td>
                       <td className="p-5">
-                        <button
-                          onClick={() =>
-                            navigate(`/details/${encodeURIComponent(item.file_name)}`)
-                          }
-                          className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105"
-                        >
-                          View Metadata
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() =>
+                              navigate(`/details/${encodeURIComponent(item.file_name)}`)
+                            }
+                            className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105"
+                          >
+                            View Metadata
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(item.file_name)}
+                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

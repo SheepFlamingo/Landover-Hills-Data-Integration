@@ -96,8 +96,33 @@ def add_metadata(
             break
     return {"message": "Metadata saved"}
 
+def sync_inventory_with_filesystem():
+    """Remove entries from inventory if files no longer exist on disk"""
+    global inventory
+    existing_files = {f["file_name"] for f in inventory}
+    actual_files = set(os.listdir(UPLOAD_DIR)) if os.path.exists(UPLOAD_DIR) else set()
+    
+    # Remove entries for files that no longer exist
+    inventory = [item for item in inventory if item["file_name"] in actual_files]
+    
+    # Add any new files that exist on disk but not in inventory
+    for fname in actual_files:
+        if fname not in existing_files:
+            fpath = os.path.join(UPLOAD_DIR, fname)
+            if os.path.isfile(fpath):
+                size_kb = round(os.path.getsize(fpath) / 1024, 2)
+                mod_time = os.path.getmtime(fpath)
+                uploaded_date = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
+                inventory.append({
+                    "file_name": fname,
+                    "file_type": fname.split(".")[-1],
+                    "file_size_kb": size_kb,
+                    "uploaded": uploaded_date
+                })
+
 @app.get("/inventory")
 def get_inventory():
+    sync_inventory_with_filesystem()
     return inventory
 
 @app.get("/export")
@@ -108,6 +133,21 @@ def export_inventory():
     filepath = "Municipal_Data_Inventory.xlsx"
     df.to_excel(filepath, index=False)
     return FileResponse(filepath, filename=filepath)
+
+@app.delete("/files/{file_name}")
+def delete_file(file_name: str):
+    filepath = os.path.join(UPLOAD_DIR, file_name)
+    if not os.path.exists(filepath):
+        return {"error": "File not found"}
+    
+    try:
+        os.remove(filepath)
+        # Remove from inventory
+        global inventory
+        inventory = [item for item in inventory if item["file_name"] != file_name]
+        return {"message": f"File '{file_name}' deleted successfully"}
+    except Exception as e:
+        return {"error": f"Failed to delete file: {str(e)}"}
 
 @app.get("/files/{file_name}")
 def download_file(file_name: str):
