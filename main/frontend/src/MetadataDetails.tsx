@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const API = "http://127.0.0.1:8000";
+const API = "https://landover-hills-data-integration-api.onrender.com";
 
 interface Dataset {
   file_name: string;
