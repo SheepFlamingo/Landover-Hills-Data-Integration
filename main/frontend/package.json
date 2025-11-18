@@ -1,7 +1,12 @@
 {
   "name": "frontend",
+  "homepage": "./",
+  "main": "build/electron.js",
   "version": "0.1.0",
   "private": true,
+  "author": "Team of Developer at Landover Hills",
+  "license": "MIT",
+  "description": "Landover Hills Data Integration Application",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -12,6 +17,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "axios": "^1.13.2",
+    "electron-is-dev": "^3.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.5",
@@ -20,10 +26,13 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "concurrently \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electron public/electron.js\"",
+    "react-start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "package": "cross-env PUBLIC_URL=./ react-scripts build && cpx public/electron.js build && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "eslintConfig": {
     "extends": [
@@ -46,7 +55,24 @@
   "devDependencies": {
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.22",
+    "concurrently": "^8.2.2",
+    "cpx": "^1.5.0",
+    "cross-env": "^7.0.3",
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.18"
+    "tailwindcss": "^3.4.18",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.melvi.landoverhillsdataintegration",
+    "productName": "Landover Hills Data",
+    "files": [
+      "build/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    }
   }
 }
