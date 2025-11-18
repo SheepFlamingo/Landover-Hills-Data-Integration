@@ -8,22 +8,12 @@
   "license": "MIT",
   "description": "Landover Hills Data Integration Application",
   "dependencies": {
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.126",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
     "axios": "^1.13.2",
     "electron-is-dev": "^3.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.5",
-    "react-scripts": "5.0.1",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "react-scripts": "5.0.1"
   },
   "scripts": {
     "start": "concurrently \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electron public/electron.js\"",
@@ -53,6 +43,14 @@
     ]
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.126",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.22",
     "concurrently": "^8.2.2",
@@ -62,17 +60,31 @@
     "electron-builder": "^25.1.8",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",
-    "wait-on": "^7.2.0"
+    "typescript": "^4.9.5",
+    "wait-on": "^7.2.0",
+    "web-vitals": "^2.1.4"
   },
   "build": {
     "appId": "com.melvi.landoverhillsdataintegration",
     "productName": "Landover Hills Data",
+    "compression": "maximum",
     "files": [
       "build/**/*"
     ],
     "directories": {
       "buildResources": "assets",
       "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": {
+        "target": "dmg",
+        "arch": ["universal"] 
+      },
+      "icon": "build/icon.icns"
     }
   }
 }
