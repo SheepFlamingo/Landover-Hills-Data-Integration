@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
+import { CATEGORIES } from "./constants/categories";
 
-const API = "https://landover-hills-data-integration-api.onrender.com";
+const API = process.env.REACT_APP_API_URL || "https://landover-hills-data-integration-api.onrender.com";
 
 interface Dataset {
   file_name: string;
@@ -23,7 +24,10 @@ interface Dataset {
 export default function MetadataDetails() {
   const { file_name } = useParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState<Dataset | null>(null);
+  const location = useLocation();
+  const initialDataset =
+    (location.state as { dataset?: Dataset } | undefined)?.dataset || null;
+  const [form, setForm] = useState<Dataset | null>(initialDataset);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
@@ -32,10 +36,16 @@ export default function MetadataDetails() {
       const found = res.data.find(
         (d: Dataset) => d.file_name === decodeURIComponent(file_name || "")
       );
-      setForm(found || null);
+      setForm(found || initialDataset);
     };
     fetchData();
-  }, [file_name]);
+  }, [file_name, initialDataset]);
+
+  useEffect(() => {
+    if (initialDataset) {
+      setForm(initialDataset);
+    }
+  }, [initialDataset]);
 
   const handleChange = (key: keyof Dataset, value: string) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -79,18 +89,78 @@ export default function MetadataDetails() {
   };
 
   const metadataFields = [
-    ["Dataset Title", "dataset_title"],
-    ["Description", "description"],
-    ["Category", "category"],
-    ["Tags / Keywords", "tags"],
-    ["Row Labels", "row_labels"],
-    ["Update Frequency", "update_frequency"],
-    ["Data Provided By (Agency / Department)", "data_provided_by"],
-    ["Contact Email", "contact_email"],
-    ["Licensing & Attribution", "licensing"],
-    ["Data Dictionary / Attachments", "data_dictionary"],
-    ["Resource Name", "resource_name"],
-    ["Last Updated Date", "last_updated_date"],
+    {
+      label: "Dataset Title",
+      key: "dataset_title",
+      description: "Concise, descriptive name of the dataset that reflects its contents. Avoid abbreviations.",
+      example: "Town of XYZ"
+    },
+    {
+      label: "Description",
+      key: "description",
+      description: "Detailed summary explaining what the dataset contains, its purpose, and how it can be used. Mention data sources and update frequency.",
+      example: "This dataset contains information about the programs of Town XYZ."
+    },
+    {
+      label: "Category",
+      key: "category",
+      description: "Broad classification under which the dataset falls in the portal.",
+      example: "Public Safety / Health / Transportation / Finance / Environment"
+    },
+    {
+      label: "Tags / Keywords",
+      key: "tags",
+      description: "Comma-separated keywords to help users search and discover the dataset easily.",
+      example: "crime, police, incidents, safety, pgcounty, 310, Town XYZ"
+    },
+    {
+      label: "Row Labels",
+      key: "row_labels",
+      description: "The key field that uniquely identifies each record or entry in the dataset.",
+      example: "Incident ID / Permit Number / Case ID"
+    },
+    {
+      label: "Update Frequency",
+      key: "update_frequency",
+      description: "How often the dataset is refreshed or updated.",
+      example: "Monthly / Quarterly / Annually / As Needed"
+    },
+    {
+      label: "Data Provided By (Agency / Department)",
+      key: "data_provided_by",
+      description: "The official county department, office, or agency responsible for producing or maintaining the dataset.",
+      example: "Town of XYZ"
+    },
+    {
+      label: "Contact Email",
+      key: "contact_email",
+      description: "Email address for questions or feedback about the dataset.",
+      example: "dataservices@pgcmd.gov"
+    },
+    {
+      label: "Licensing & Attribution",
+      key: "licensing",
+      description: "Specify data usage rights and attribution requirements.",
+      example: "Prince George's County Government"
+    },
+    {
+      label: "Data Dictionary / Attachments",
+      key: "data_dictionary",
+      description: "Upload or link any supporting documentation explaining data fields, codes, or classifications.",
+      example: "Dataset CSV File for Data Definitions"
+    },
+    {
+      label: "Resource Name",
+      key: "resource_name",
+      description: "Name of the source of the dataset.",
+      example: "TOWNXYZ.Budgets"
+    },
+    {
+      label: "Last Updated Date",
+      key: "last_updated_date",
+      description: "The date when the dataset or metadata was last modified.",
+      example: "2025-09-29"
+    },
   ];
 
   return (
@@ -132,30 +202,69 @@ export default function MetadataDetails() {
             <table className="min-w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-indigo-100 to-blue-100 border-b-2 border-indigo-200">
-                  <th className="p-5 text-left font-bold text-gray-800 w-1/3 text-base">Field</th>
+                  <th className="p-5 text-left font-bold text-gray-800 w-1/4 text-base">Field</th>
+                  <th className="p-5 text-left font-bold text-gray-800 w-2/5 text-base">Description & Examples</th>
                   <th className="p-5 text-left font-bold text-gray-800 text-base">Value</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {metadataFields.map(([label, key]) => (
-                  <tr key={key} className="hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-150 group">
-                    <td className="p-5 font-semibold text-gray-700 group-hover:text-indigo-700">
-                      {label}
+                {metadataFields.map((field) => (
+                  <tr key={field.key} className="hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-150 group">
+                    <td className="p-5 font-semibold text-gray-700 group-hover:text-indigo-700 align-top">
+                      {field.label}
                     </td>
-                    <td className="p-5">
+                    <td className="p-5 align-top">
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {field.description}
+                        </p>
+                        <div className="bg-indigo-50 border-l-4 border-indigo-400 p-3 rounded-r-lg">
+                          <p className="text-xs font-semibold text-indigo-700 mb-1">Example:</p>
+                          <p className="text-sm text-indigo-800 font-medium italic">
+                            {field.example}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-5 align-top">
                       {isEditing ? (
-                        <input
-                          type="text"
-                          value={form[key as keyof Dataset] || ""}
-                          onChange={(e) =>
-                            handleChange(key as keyof Dataset, e.target.value)
-                          }
-                          className="border-2 border-gray-300 rounded-xl px-4 py-2.5 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 font-medium text-gray-700 hover:border-indigo-400"
-                          placeholder={getPlaceholder(key)}
-                        />
+                        field.key === "category" ? (
+                          <select
+                            value={(form[field.key as keyof Dataset] as string) || ""}
+                            onChange={(e) =>
+                              handleChange(field.key as keyof Dataset, e.target.value)
+                            }
+                            className="border-2 border-gray-300 rounded-xl px-4 py-2.5 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 font-medium text-gray-700 hover:border-indigo-400 bg-white"
+                          >
+                            <option value="">— Select Category —</option>
+                            {CATEGORIES.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={form[field.key as keyof Dataset] || ""}
+                            onChange={(e) =>
+                              handleChange(field.key as keyof Dataset, e.target.value)
+                            }
+                            className="border-2 border-gray-300 rounded-xl px-4 py-2.5 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 font-medium text-gray-700 hover:border-indigo-400"
+                            placeholder={getPlaceholder(field.key)}
+                          />
+                        )
                       ) : (
                         <span className="text-gray-800 font-medium">
-                          {form[key as keyof Dataset] || <span className="text-gray-400 italic">—</span>}
+                          {field.key === "category" && form[field.key as keyof Dataset] ? (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold">
+                              {form[field.key as keyof Dataset]}
+                            </span>
+                          ) : (
+                            form[field.key as keyof Dataset] || (
+                              <span className="text-gray-400 italic">—</span>
+                            )
+                          )}
                         </span>
                       )}
                     </td>

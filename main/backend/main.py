@@ -1,8 +1,11 @@
-from fastapi import FastAPI, UploadFile, Form
+from fastapi import FastAPI, UploadFile, Form, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 import pandas as pd
 import os
+import io
+import zipfile
+import urllib.parse
 from datetime import datetime
 
 app = FastAPI(title="Landover Hills Data Inventory")
@@ -115,3 +118,118 @@ def download_file(file_name: str):
     if not os.path.exists(filepath):
         return {"error": "File not found"}
     return FileResponse(filepath, filename=file_name)
+
+def _build_metadata_workbook(records: list[dict]):
+    """Build a formatted Excel workbook with metadata in a readable format"""
+    engines = ["openpyxl", "xlsxwriter"]
+    buffer = io.BytesIO()
+    
+    for engine in engines:
+        try:
+            with pd.ExcelWriter(buffer, engine=engine) as writer:
+                for record in records:
+                    # Create a formatted metadata table
+                    metadata_fields = [
+                        ("File Name", record.get("file_name", "")),
+                        ("Dataset Title", record.get("dataset_title", "")),
+                        ("Description", record.get("description", "")),
+                        ("Category", record.get("category", "")),
+                        ("Tags / Keywords", record.get("tags", "")),
+                        ("Row Labels", record.get("row_labels", "")),
+                        ("Update Frequency", record.get("update_frequency", "")),
+                        ("Data Provided By", record.get("data_provided_by", "")),
+                        ("Contact Email", record.get("contact_email", "")),
+                        ("Licensing & Attribution", record.get("licensing", "")),
+                        ("Data Dictionary / Attachments", record.get("data_dictionary", "")),
+                        ("Resource Name", record.get("resource_name", "")),
+                        ("Last Updated Date", record.get("last_updated_date", "")),
+                        ("File Type", record.get("file_type", "")),
+                        ("File Size (KB)", record.get("file_size_kb", "")),
+                        ("Uploaded", record.get("uploaded", "")),
+                    ]
+                    
+                    # Create DataFrame with Field and Value columns
+                    df = pd.DataFrame(metadata_fields, columns=["Field", "Value"])
+                    
+                    # Use file name as sheet name (truncate if too long)
+                    sheet_name = record.get("file_name", "Metadata")[:31]  # Excel sheet name limit
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                    
+                    # Try to format the sheet if using openpyxl
+                    if engine == "openpyxl":
+                        try:
+                            from openpyxl.utils import get_column_letter
+                            worksheet = writer.sheets[sheet_name]
+                            # Auto-adjust column widths
+                            for idx, col in enumerate(df.columns):
+                                max_length = max(
+                                    df[col].astype(str).map(len).max(),
+                                    len(str(col))
+                                )
+                                col_letter = get_column_letter(idx + 1)
+                                worksheet.column_dimensions[col_letter].width = min(max_length + 2, 50)
+                        except:
+                            pass  # If formatting fails, just continue
+            
+            buffer.seek(0)
+            return buffer
+        except ModuleNotFoundError:
+            buffer.seek(0)
+            buffer.truncate(0)
+            continue
+        except Exception as e:
+            # If there's an error with one engine, try the next
+            buffer.seek(0)
+            buffer.truncate(0)
+            continue
+    
+    raise HTTPException(
+        status_code=500,
+        detail="Excel export requires either 'openpyxl' or 'xlsxwriter'. Run 'pip install openpyxl xlsxwriter' inside the backend environment.",
+    )
+
+
+@app.get("/metadata/{file_name:path}")
+def export_file_metadata(file_name: str):
+    """Export metadata for a single file as Excel with all metadata editor fields"""
+    file_name_decoded = urllib.parse.unquote(file_name)
+    item = next((i for i in inventory if i["file_name"] == file_name_decoded), None)
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="File not found in inventory")
+    
+    try:
+        metadata_buffer = _build_metadata_workbook([item])
+        safe_filename = file_name_decoded.replace(" ", "_").replace("/", "_").replace("\\", "_").replace(",", "_")
+        buffer_content = metadata_buffer.read()
+        return StreamingResponse(
+            io.BytesIO(buffer_content),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}_metadata.xlsx"'
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create Excel file: {str(e)}")
+
+@app.delete("/delete/{file_name}")
+def delete_file(file_name: str):
+    # Remove from inventory
+    global inventory
+    file_found = False
+    for i, item in enumerate(inventory):
+        if item["file_name"] == file_name:
+            inventory.pop(i)
+            file_found = True
+            break
+    
+    # Delete the physical file
+    filepath = os.path.join(UPLOAD_DIR, file_name)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        return {"message": f"File '{file_name}' deleted successfully"}
+    elif file_found:
+        # File was in inventory but not on disk
+        return {"message": f"File '{file_name}' removed from inventory"}
+    else:
+        return {"error": "File not found"}

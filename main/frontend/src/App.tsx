@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { HashRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import MetadataDetails from "./MetadataDetails";
+import { CATEGORIES } from "./constants/categories";
 
-const API = "https://landover-hills-data-integration-api.onrender.com";
+const API = process.env.REACT_APP_API_URL || "https://landover-hills-data-integration-api.onrender.com";
 
 interface Dataset {
   file_name: string;
@@ -11,35 +12,6 @@ interface Dataset {
   uploaded?: string;
   category?: string;
 }
-
-const CATEGORIES = [
-  "Administrative",
-  "Agriculture",
-  "Biota",
-  "Boundaries",
-  "Budget",
-  "Business & Economy",
-  "Demographic",
-  "Education",
-  "Elevation",
-  "Energy and Environment",
-  "Geoscientific",
-  "Government",
-  "Health and Human Services",
-  "Historic",
-  "Housing",
-  "Hydrology",
-  "Imagery",
-  "Location",
-  "Military",
-  "Planning",
-  "Public Safety",
-  "Society",
-  "Structure",
-  "Transportation",
-  "Utility",
-  "Weather"
-].sort();
 
 function Overview() {
   const [inventory, setInventory] = useState<Dataset[]>([]);
@@ -54,6 +26,10 @@ function Overview() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [categorySearch, setCategorySearch] = useState<string>("");
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ show: boolean; fileNames: string[] }>({ show: false, fileNames: [] });
+  const [categoryModal, setCategoryModal] = useState<{ show: boolean; fileNames: string[] }>({ show: false, fileNames: [] });
+  const [categorySelection, setCategorySelection] = useState("");
   const navigate = useNavigate();
 
   const refreshInventory = async () => {
@@ -89,7 +65,7 @@ function Overview() {
     cat.toLowerCase().includes(categorySearch.toLowerCase())
   );
 
-  const handleCategoryChange = async (fileName: string, newCategory: string) => {
+  const updateFileCategory = async (fileName: string, newCategory: string) => {
     try {
       const formData = new FormData();
       formData.append("file_name", fileName);
@@ -112,9 +88,131 @@ function Overview() {
       }
       
       await axios.post(`${API}/metadata`, formData);
-      await refreshInventory();
     } catch (error) {
       console.error("Error updating category:", error);
+      throw error;
+    }
+  };
+
+  const handleSelectFile = (fileName: string) => {
+    setSelectedFiles(prev => 
+      prev.includes(fileName) 
+        ? prev.filter(f => f !== fileName)
+        : [...prev, fileName]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedFiles.length === filteredInventory.length) {
+      setSelectedFiles([]);
+    } else {
+      setSelectedFiles(filteredInventory.map(item => item.file_name));
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedFiles.length > 0) {
+      setDeleteConfirmation({ show: true, fileNames: [...selectedFiles] });
+    }
+  };
+
+  const handleBulkCategoryClick = () => {
+    if (selectedFiles.length > 0) {
+      setCategorySelection("");
+      setCategoryModal({ show: true, fileNames: [...selectedFiles] });
+    }
+  };
+
+  const handleDownloadMetadata = async (fileName: string) => {
+    try {
+      const response = await axios.get(
+        `${API}/metadata/${encodeURIComponent(fileName)}`,
+        { 
+          responseType: "blob",
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          }
+        }
+      );
+
+      if (response.status !== 200) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+
+      const blob = new Blob([response.data], { 
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      });
+      
+      if (blob.size === 0) {
+        throw new Error("Downloaded file is empty");
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const disposition = response.headers["content-disposition"];
+      const match = disposition && disposition.match(/filename="?(.*)"?/);
+      link.href = url;
+      link.download = match ? match[1] : `${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}_metadata.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error("Error downloading metadata:", error);
+      const errorMessage = error.response?.data?.detail || error.message || "Unknown error";
+      alert(`Failed to download metadata: ${errorMessage}`);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    const fileNames = deleteConfirmation.fileNames;
+    setDeleteConfirmation({ show: false, fileNames: [] });
+    
+    try {
+      // Delete all selected files
+      await Promise.all(
+        fileNames.map(fileName => 
+          axios.delete(`${API}/delete/${encodeURIComponent(fileName)}`)
+        )
+      );
+      setSelectedFiles([]);
+      await refreshInventory();
+    } catch (error) {
+      console.error("Error deleting files:", error);
+      alert("Failed to delete some files. Please try again.");
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmation({ show: false, fileNames: [] });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedFiles([]);
+  };
+
+  const handleCategoryModalCancel = () => {
+    setCategoryModal({ show: false, fileNames: [] });
+    setCategorySelection("");
+  };
+
+  const handleCategoryModalConfirm = async () => {
+    if (!categorySelection) {
+      alert("Please select a category first.");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        categoryModal.fileNames.map((fileName) =>
+          updateFileCategory(fileName, categorySelection)
+        )
+      );
+      setCategoryModal({ show: false, fileNames: [] });
+      setCategorySelection("");
+      setSelectedFiles([]);
+      await refreshInventory();
+    } catch (error) {
       alert("Failed to update category. Please try again.");
     }
   };
@@ -156,6 +254,107 @@ function Overview() {
             >
               Continue
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Category Update Modal */}
+      {categoryModal.show && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full">
+              <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7m14 0a7 7 0 00-7-7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+              Assign Category
+            </h2>
+            <p className="text-gray-600 mb-4 text-center">
+              Select a category to apply to the {categoryModal.fileNames.length} selected file{categoryModal.fileNames.length !== 1 ? "s" : ""}.
+            </p>
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Category
+              </label>
+              <select
+                value={categorySelection}
+                onChange={(e) => setCategorySelection(e.target.value)}
+                className="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+              >
+                <option value="">— Select Category —</option>
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex space-x-4">
+              <button
+                onClick={handleCategoryModalCancel}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCategoryModalConfirm}
+                className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+              >
+                Save Category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation.show && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+              Delete {deleteConfirmation.fileNames.length > 1 ? 'Files' : 'File'}?
+            </h2>
+            <p className="text-gray-600 mb-4 text-center">
+              Are you sure you want to delete {deleteConfirmation.fileNames.length > 1 ? 'these files' : 'this file'}?
+            </p>
+            <div className="bg-gray-50 rounded-xl p-4 mb-4 max-h-48 overflow-y-auto">
+              {deleteConfirmation.fileNames.length === 1 ? (
+                <p className="text-gray-800 font-semibold text-center break-words">
+                  "{deleteConfirmation.fileNames[0]}"
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {deleteConfirmation.fileNames.map((fileName, idx) => (
+                    <li key={idx} className="text-gray-800 font-medium text-sm break-words">
+                      • {fileName}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="text-red-600 text-sm mb-6 text-center font-medium">
+              This action cannot be undone.
+            </p>
+            <div className="flex space-x-4">
+              <button
+                onClick={handleDeleteCancel}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+              >
+                Delete {deleteConfirmation.fileNames.length > 1 ? `(${deleteConfirmation.fileNames.length})` : ''}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -230,6 +429,42 @@ function Overview() {
           </div>
         </div>
 
+        {/* Bulk Delete Section */}
+        {selectedFiles.length > 0 && (
+          <div className="mt-10 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-2xl p-6 shadow-lg">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Click "Delete Selected" to remove these files permanently
+                </p>
+              </div>
+              <div className="flex items-center space-x-3 flex-wrap gap-y-3">
+                <button
+                  onClick={handleClearSelection}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium"
+                >
+                  Clear Selection
+                </button>
+                <button
+                  onClick={handleBulkDeleteClick}
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105"
+                >
+                  Delete Selected
+                </button>
+                <button
+                  onClick={handleBulkCategoryClick}
+                  className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105"
+                >
+                  Assign Category
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Table Section */}
         <div className="mt-10 bg-white/90 backdrop-blur-xl shadow-2xl rounded-2xl border border-white/60 overflow-hidden">
           <div className="px-6 py-4 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100">
@@ -301,6 +536,15 @@ function Overview() {
             <table className="min-w-full text-sm">
               <thead className="bg-gradient-to-r from-indigo-700 via-blue-600 to-indigo-800 text-white">
                 <tr>
+                  <th className="p-5 text-center font-semibold text-base w-12">
+                    <input
+                      type="checkbox"
+                      checked={filteredInventory.length > 0 && selectedFiles.length === filteredInventory.length}
+                      onChange={handleSelectAll}
+                      className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      title="Select all"
+                    />
+                  </th>
                   <th className="p-5 text-left font-semibold text-base">File Name</th>
                   <th className="p-5 text-left font-semibold text-base">Dataset Title</th>
                   <th className="p-5 text-left font-semibold text-base">Category</th>
@@ -313,8 +557,17 @@ function Overview() {
                   filteredInventory.map((item, i) => (
                     <tr
                       key={i}
-                      className="border-t border-gray-100 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-150 group"
+                      className={`border-t border-gray-100 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-150 group ${selectedFiles.includes(item.file_name) ? 'bg-indigo-50' : ''}`}
                     >
+                      <td className="p-5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedFiles.includes(item.file_name)}
+                          onChange={() => handleSelectFile(item.file_name)}
+                          className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          title="Select this file"
+                        />
+                      </td>
                       <td className="p-5 font-semibold text-gray-800 group-hover:text-indigo-700">
                         <a
                           href={`${API}/files/${encodeURIComponent(item.file_name)}`}
@@ -327,18 +580,13 @@ function Overview() {
                       </td>
                       <td className="p-5 text-gray-700">{item.dataset_title || <span className="text-gray-400 italic">—</span>}</td>
                       <td className="p-5 text-gray-700">
-                        <select
-                          value={item.category || ""}
-                          onChange={(e) => handleCategoryChange(item.file_name, e.target.value)}
-                          className="border-2 border-gray-300 rounded-lg px-3 py-2 text-sm font-medium bg-white hover:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer min-w-[180px]"
-                        >
-                          <option value="">— Select Category —</option>
-                          {CATEGORIES.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
+                        {item.category ? (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold">
+                            {item.category}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic">—</span>
+                        )}
                       </td>
                       <td className="p-5 text-gray-700">
                         {item.uploaded ? (
@@ -360,20 +608,38 @@ function Overview() {
                         )}
                       </td>
                       <td className="p-5">
-                        <button
-                          onClick={() =>
-                            navigate(`/details/${encodeURIComponent(item.file_name)}`)
-                          }
-                          className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105"
-                        >
-                          View Metadata
-                        </button>
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                          <button
+                            onClick={() =>
+                              navigate(`/details/${encodeURIComponent(item.file_name)}`, {
+                                state: { dataset: item },
+                              })
+                            }
+                            className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105 text-sm"
+                          >
+                            View Metadata
+                          </button>
+                          <button
+                            onClick={() => window.open(`${API}/files/${encodeURIComponent(item.file_name)}`)}
+                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105 text-sm"
+                            title="Download file"
+                          >
+                            Download File
+                          </button>
+                          <button
+                            onClick={() => handleDownloadMetadata(item.file_name)}
+                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium hover:scale-105 text-sm"
+                            title="Download metadata"
+                          >
+                            Download Metadata
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-12 text-center">
+                    <td colSpan={6} className="p-12 text-center">
                       <div className="flex flex-col items-center justify-center space-y-4">
                         <div className="w-16 h-16 bg-gray-200 rounded-xl flex items-center justify-center">
                           <div className="w-8 h-8 bg-gray-400 rounded"></div>
