@@ -2,6 +2,10 @@
 
 A reusable system for municipalities to manage and publish data inventories with metadata.
 
+## Getting Started
+
+**New to coding?** See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed step-by-step instructions.
+
 ## Quick Start
 
 ### Prerequisites
@@ -72,12 +76,12 @@ main/
 
 ## Features
 
-- 📤 Upload datasets to inventory
-- 📝 Edit detailed metadata for each file
-- 🏷️ Organize by categories
-- 📥 Download files and metadata separately
-- 📊 Export full inventory to Excel
-- 🗑️ Bulk delete and category assignment
+- Upload datasets to inventory
+- Edit detailed metadata for each file
+- Organize by categories
+- Download files and metadata separately
+- Export full inventory to Excel
+- Bulk delete and category assignment
 
 ## API Endpoints
 
@@ -125,4 +129,4 @@ docker-compose up --build
 
 ## License
 
-MIT
+Apache License 2.0
