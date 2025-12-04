@@ -1,81 +1,128 @@
-# Municipal Data Integration Platform
+# Municipal Data Integration Portal
 
-A sustainable, automated system for municipalities to manage, catalog, and publish their data. This platform provides an easy-to-use interface for uploading datasets, adding metadata, and making municipal data accessible to the public.
+A reusable system for municipalities to manage and publish data inventories with metadata.
 
-## 🚀 Quick Start
+## Quick Start
 
-### Using Docker (Recommended)
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+
+### Backend
+
 ```bash
-# 1. Clone the repository
-git clone <repository-url>
-cd Landover-Hills-Data-Integration
-
-# 2. Configure your municipality
-cp .env.example .env
-# Edit .env with your municipality information
-
-# 3. Start the application
-docker compose up -d
-
-# 4. Access the application
-# Frontend: http://localhost:8080
-# Backend API: http://localhost:8000/docs
+cd main/backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
 ```
 
-### Local Development
-See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed instructions.
+Backend runs at `http://localhost:8000`
 
-## 📋 Features
+### Frontend
 
-- **File Management**: Upload and organize municipal datasets
-- **Metadata Editor**: Comprehensive metadata entry with descriptions and examples
-- **Category Management**: Organize datasets by category
-- **Bulk Operations**: Select multiple files for category assignment or deletion
-- **Export Functionality**: Download files and metadata as Excel spreadsheets
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
-- **Easy Integration**: Simple integration with existing municipal websites
+```bash
+cd main/frontend
+npm install
+echo "REACT_APP_API_URL=http://localhost:8000" > .env
+npm start
+```
 
-## 📚 Documentation
+Frontend runs at `http://localhost:3000`
 
-- **[Setup Guide](./SETUP_GUIDE.md)**: Complete setup instructions
-- **[Deployment Guide](./DEPLOYMENT.md)**: Production deployment options
-- **[Integration Guide](./INTEGRATION.md)**: Website integration methods
-- **[API Documentation](http://localhost:8000/docs)**: Interactive API docs (when running)
+## Configuration
 
-## 🏛️ For Municipalities
+### API URL Pattern
 
-This platform is designed to be:
-- **Easy to Deploy**: Docker-based deployment, works on any server
-- **Easy to Customize**: Simple configuration files for branding and settings
-- **Easy to Integrate**: Multiple integration options for your website
-- **Easy to Use**: Intuitive interface for staff to manage data
+Both `App.tsx` and `MetadataDetails.tsx` use:
 
-## 🛠️ Technology Stack
+```typescript
+const API = process.env.REACT_APP_API_URL || "https://landover-hills-data-integration-api.onrender.com";
+```
 
-- **Backend**: FastAPI (Python)
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Deployment**: Docker Compose
-- **Data Format**: Excel/CSV support
+**How it works:**
+- Checks for `REACT_APP_API_URL` in `.env` file
+- Falls back to production URL if not set
+- Allows same codebase for local dev and production
 
-## 📖 Getting Started
+**Local Development:**
+Create `main/frontend/.env`:
+```
+REACT_APP_API_URL=http://localhost:8000
+```
 
-1. **Review the [Setup Guide](./SETUP_GUIDE.md)** for installation
-2. **Configure your municipality** in the `.env` file
-3. **Customize branding** (logo, colors, municipality name)
-4. **Deploy** using one of the methods in [DEPLOYMENT.md](./DEPLOYMENT.md)
-5. **Integrate** with your website using [INTEGRATION.md](./INTEGRATION.md)
+**Production:**
+Set environment variable or use default production URL.
 
-## 🤝 Support
+## Project Structure
 
-For questions or issues:
-- Check the documentation files
-- Review API documentation at `/docs` endpoint
-- Contact your development team
+```
+main/
+├── backend/
+│   ├── main.py          # FastAPI endpoints
+│   ├── uploads/         # File storage
+│   └── requirements.txt
+└── frontend/
+    ├── src/
+    │   ├── App.tsx              # Main inventory page
+    │   └── MetadataDetails.tsx  # Metadata editor
+    └── .env                     # API configuration
+```
 
-## 📄 License
+## Features
 
-See [LICENSE](./LICENSE) file for details.
+- 📤 Upload datasets to inventory
+- 📝 Edit detailed metadata for each file
+- 🏷️ Organize by categories
+- 📥 Download files and metadata separately
+- 📊 Export full inventory to Excel
+- 🗑️ Bulk delete and category assignment
 
-## 🙏 Acknowledgments
+## API Endpoints
 
-Developed as part of the iConsultancy program, creating a replicable "starter kit" for municipalities across Maryland and beyond.
+- `GET /inventory` - List all datasets
+- `POST /upload` - Upload file
+- `POST /metadata` - Update metadata
+- `GET /files/{file_name}` - Download file
+- `GET /metadata/{file_name}` - Download metadata Excel
+- `DELETE /delete/{file_name}` - Delete file
+- `GET /export` - Export all inventory to Excel
+
+## Docker Deployment
+
+```bash
+docker-compose up --build
+```
+
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:8080`
+
+## For Other Municipalities
+
+1. Clone repository
+2. Set `REACT_APP_API_URL` to your backend URL
+3. Update municipality name (or use first-run modal)
+4. Deploy backend and frontend
+
+## Troubleshooting
+
+**Frontend can't connect:**
+- Verify backend is running on port 8000
+- Check `.env` file exists with correct URL
+- Check browser console for CORS errors
+
+**Export fails:**
+- Ensure `openpyxl` is installed: `pip install openpyxl`
+
+**Port already in use:**
+- Change port: `uvicorn main:app --reload --port 8001`
+- Update `.env` accordingly
+
+**Module not found errors:**
+- Ensure virtual environment is activated
+- Reinstall: `pip install -r requirements.txt`
+
+## License
+
+MIT
