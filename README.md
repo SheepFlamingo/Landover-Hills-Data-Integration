@@ -2,11 +2,31 @@
 
 A reusable system for municipalities to manage and publish data inventories with metadata.
 
+## 🚀 Quick Start (One-Step Process)
+
+**Just want to run it?** It's super simple:
+
+### Mac/Linux:
+```bash
+./START_APP.sh
+```
+Or just **double-click** `START_APP.sh`
+
+### Windows:
+**Double-click** `START_APP.bat`
+
+### What It Does:
+1. ✅ Automatically starts the backend server
+2. ✅ Opens the application in your browser
+3. ✅ Everything runs locally (no internet needed)
+
+**📖 For more details, see [QUICK_START.md](QUICK_START.md)**
+
 ## Getting Started
 
 **New to coding?** See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed step-by-step instructions.
 
-## Quick Start
+## Manual Setup (If Needed)
 
 ### Prerequisites
 - Python 3.10+
@@ -95,12 +115,74 @@ main/
 
 ## Docker Deployment
 
+### Prerequisites
+- Docker Desktop installed ([Download](https://www.docker.com/products/docker-desktop/))
+- Verify installation: `docker --version` and `docker-compose --version`
+
+### Quick Start
+
+```bash
+# Navigate to project root
+cd Landover-Hills-Data-Integration
+
+# Build and start containers
+docker-compose up --build
+```
+
+**Access the application:**
+- Frontend: `http://localhost:8080`
+- Backend API: `http://localhost:8000`
+- API Docs: `http://localhost:8000/docs`
+
+### Docker Commands
+
+**Start in background (detached mode):**
+```bash
+docker-compose up -d --build
+```
+
+**Stop containers:**
+```bash
+docker-compose down
+```
+
+**View logs:**
+```bash
+docker-compose logs
+# Or for specific service:
+docker-compose logs backend
+docker-compose logs frontend
+```
+
+**Rebuild after code changes:**
 ```bash
 docker-compose up --build
 ```
 
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:8080`
+**Stop and remove everything (including volumes):**
+```bash
+docker-compose down -v
+```
+
+### How It Works
+
+- **Backend Container**: Python 3.10 with FastAPI, runs on port 8000
+- **Frontend Container**: React app built and served with Nginx, runs on port 8080
+- **Volume Mounting**: `uploads/` folder is mounted so files persist on your computer
+- **File Storage**: Uploaded files are stored in `main/backend/uploads/` on your host machine
+
+### Troubleshooting
+
+**Port already in use:**
+- Change ports in `docker-compose.yml` if needed
+
+**Build fails:**
+- Check Docker is running: `docker ps`
+- Check logs: `docker-compose logs`
+
+**Frontend can't connect to backend:**
+- Ensure both containers are running: `docker-compose ps`
+- Check backend logs: `docker-compose logs backend`
 
 ## For Other Municipalities
 

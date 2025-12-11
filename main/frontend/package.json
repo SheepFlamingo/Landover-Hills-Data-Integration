@@ -16,7 +16,8 @@
     "react-scripts": "5.0.1"
   },
   "scripts": {
-    "start": "concurrently \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electron public/electron.js\"",
+    "start": "react-scripts start",
+    "start-electron": "concurrently \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electron public/electron.js\"",
     "react-start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
