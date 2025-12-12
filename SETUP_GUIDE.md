@@ -60,17 +60,18 @@ You need to tell the computer where your project files are located.
 
 **On Mac:**
 ```bash
-cd "/Users/lexindeang/Library/CloudStorage/OneDrive-UniversityofMaryland/School/Senior2025/INST490/Landover-Hills-Data-Integration/main/backend"
+cd main/backend
 ```
 
 **On Windows:**
 ```cmd
-cd "C:\Users\YourName\OneDrive\UniversityofMaryland\School\Senior2025\INST490\Landover-Hills-Data-Integration\main\backend"
+cd main\backend
 ```
 
-**Note:** Replace the path with the actual location of your project folder. You can find it by:
-- Right-clicking the project folder
-- Selecting "Copy Path" or "Properties" to see the full path
+**Note:** Make sure you're in the project root directory. If you're not sure where you are, you can:
+- Navigate to the project folder in File Explorer (Windows) or Finder (Mac)
+- Right-click the project folder and select "Copy Path" or "Properties" to see the full path
+- Or use `cd` to navigate to where you downloaded/cloned the project
 
 Press Enter after typing the command.
 
@@ -154,15 +155,15 @@ INFO:     Application startup complete.
 
 **On Mac:**
 ```bash
-cd "/Users/lexindeang/Library/CloudStorage/OneDrive-UniversityofMaryland/School/Senior2025/INST490/Landover-Hills-Data-Integration/main/frontend"
+cd main/frontend
 ```
 
 **On Windows:**
 ```cmd
-cd "C:\Users\YourName\OneDrive\UniversityofMaryland\School\Senior2025\INST490\Landover-Hills-Data-Integration\main\frontend"
+cd main\frontend
 ```
 
-(Again, use your actual project path)
+(Make sure you're in the project root directory first)
 
 ---
 

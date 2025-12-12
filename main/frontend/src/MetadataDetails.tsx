@@ -79,8 +79,8 @@ export default function MetadataDetails() {
       row_labels: "e.g., Incident ID / Permit Number / Case ID",
       update_frequency: "e.g., Monthly / Quarterly / Annually / As Needed",
       data_provided_by: "e.g., Town of XYZ",
-      contact_email: "e.g., dataservices@pgcmd.gov",
-      licensing: "e.g., Prince George's County Government",
+      contact_email: "e.g., data@yourmunicipality.gov",
+      licensing: "e.g., Your Municipality Name",
       data_dictionary: "e.g., Dataset CSV File for Data Definitions",
       resource_name: "e.g., TOWNXYZ.Budgets",
       last_updated_date: "e.g., 2025-09-29",
@@ -135,13 +135,13 @@ export default function MetadataDetails() {
       label: "Contact Email",
       key: "contact_email",
       description: "Email address for questions or feedback about the dataset.",
-      example: "dataservices@pgcmd.gov"
+        example: "data@yourmunicipality.gov"
     },
     {
       label: "Licensing & Attribution",
       key: "licensing",
       description: "Specify data usage rights and attribution requirements.",
-      example: "Prince George's County Government"
+        example: "Your Municipality Name"
     },
     {
       label: "Data Dictionary / Attachments",

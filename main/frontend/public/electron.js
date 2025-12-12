@@ -1,4 +1,4 @@
-// Landover-Hills-Data-Integration\main\frontend\public\electron.js
+// Electron main process for desktop application
 
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
